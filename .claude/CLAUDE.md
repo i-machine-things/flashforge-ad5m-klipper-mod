@@ -96,7 +96,7 @@ Tag releases using `vMAJOR.MINOR.PATCH`:
 - **MINOR** — new features that do not break existing functionality
 - **PATCH** — bug fixes, typo corrections, minor improvements
 
-Releases are cut as git tags only. The CI pipeline (build-lite.yml) builds and publishes artifacts for each PR and push to master, but does not auto-publish releases.
+Pushing a `v*` tag triggers the release pipeline (`release.yml`), which builds all three variants (`lite`, `klipperscreen`, `guppyscreen`) plus the uninstaller, generates checksums, and publishes a GitHub Release with all of those `.tgz` files attached. The separate CI pipeline (`build-lite.yml`) still builds the `lite` variant as an ephemeral artifact for each PR and push to master, for fast feedback — it does not publish releases.
 
 **To cut a release:**
 ```bash
@@ -104,7 +104,7 @@ git tag v1.2.3
 git push origin v1.2.3
 ```
 
-**Note:** Only tag from `master`.
+**Note:** Only tag from `master`, and only after rehearsing `release.yml` per the rule below.
 
 ### Rehearse before releasing
 

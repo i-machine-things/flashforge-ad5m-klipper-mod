@@ -118,6 +118,8 @@ This note was created based on issues encountered with PyInstaller executables r
 
 **Scope elevated permissions (e.g. `contents: write`) to the job/trigger that actually needs them.** Don't let a rehearsal path (`workflow_dispatch`) share a job with the real publish path (`push` a tag) just to save a few duplicated steps — split into separate jobs so the dry run never carries write credentials.
 
+**A lightweight CI job still needs its own `apt-get install` for any tool its steps call.** Copying a step like `dos2unix` into a trimmed-down job (one that skips the full "Install build dependencies" list from the heavier job) silently drops the package that step depends on — `ubuntu-latest` doesn't ship `dos2unix` by default.
+
 ## Documentation Hygiene
 
 **Tag code fences with a language.** A fenced code block without a language identifier (plain ``` instead of ```text) triggers markdownlint warnings.

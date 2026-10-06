@@ -144,6 +144,11 @@ jobs:
         with:
           fetch-depth: 0  # needed for git describe
 
+      - name: Install dos2unix
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y dos2unix
+
       - name: Fix line endings
         run: find build_scripts -name "*.sh" -exec dos2unix {} +
 

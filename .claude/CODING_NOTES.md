@@ -119,3 +119,5 @@ This note was created based on issues encountered with PyInstaller executables r
 **Tag code fences with a language.** A fenced code block without a language identifier (plain ``` instead of ```text) triggers markdownlint warnings.
 
 **Keep CLAUDE.md's CI/process claims in sync with reality.** Statements like "no automated CI pipeline" go stale the moment CI is added — update process docs in the same PR that changes the process.
+
+**Don't repoint user-facing links at infrastructure that doesn't exist yet.** Updating download links to this fork's Releases page before any release has been published sends users to an empty page. Flip the link in the same change that ships the first real release, not ahead of it.

@@ -9,7 +9,7 @@ Klipper Mod for the AD5M is designed to be fully removable and not break any fun
 ## Installation
 
 The mod uses the same installation mechanism as the stock software:
-1) Download the latest `Adventurer5M-KlipperMod*.tgz` update file from the [Release](https://github.com/i-machine-things/flashforge-ad5m-klipper-mod/releases) page onto a USB flash drive.
+1) Download the latest `Adventurer5M-KlipperMod*.tgz` update file from the [Release](https://github.com/xblax/flashforge_ad5m_klipper_mod/releases) page onto a USB flash drive.
 2) Plug in the drive before starting the printer
 3) During installation, the MCU firmware is updated to match the Klipper version used by the mod 
 4) Successful installation will be indicated on the display when finished

@@ -39,7 +39,7 @@ All features of the mod run directly on the printer built-in system (Allwinner T
 
 ## Getting Started
 
-Download the latest [Release Build](https://github.com/i-machine-things/flashforge-ad5m-klipper-mod/releases) and read through the documentation for [Installation](docs/INSTALL.md) and [Slicing](docs/SLICING.md). Also make yourself familiar with the [Uninstall](docs/UNINSTALL.md) methods, to get rid of the mod if you don't like it.
+Download the latest [Release Build](https://github.com/xblax/flashforge_ad5m_klipper_mod/releases) and read through the documentation for [Installation](docs/INSTALL.md) and [Slicing](docs/SLICING.md). Also make yourself familiar with the [Uninstall](docs/UNINSTALL.md) methods, to get rid of the mod if you don't like it.
 
 The Klipper Mod for AD5M (Pro) is currently provided in three variants: 
 - Default headless variant without an on-screen GUI control application — displays WiFi status and IP address on the LCD at boot

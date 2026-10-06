@@ -100,6 +100,8 @@ This note was created based on issues encountered with PyInstaller executables r
 
 **Verify background daemons actually started.** After launching a service in the background (e.g. `iwd &`), capture `$!` and check with `kill -0 $PID` rather than assuming success and waiting out a fixed timeout.
 
+**`mkdir -p` the output dir in every function that writes to it, don't rely on call order.** `package_uninstall()` wrote into `$BUILD_PACKAGE` without creating it, and only worked because `make packages` always ran `package_variant` (which does `mkdir -p`) first. A standalone CI job calling it after a fresh checkout failed every time.
+
 ## CI/CD Workflows
 
 **Apply the same path filters to `push` and `pull_request` triggers.** Missing filters on one trigger causes expensive builds (e.g. multi-hour buildroot builds) to run on every PR regardless of changed files.

@@ -1,0 +1,244 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to label this rehearsal run (no tag is pushed and no release is published)'
+        required: true
+        type: string
+
+jobs:
+  build-variant:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [lite, klipperscreen, guppyscreen]
+
+    steps:
+      - name: Free disk space
+        run: |
+          # Buildroot compiles a full cross-toolchain; reclaim runner space first.
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+                      /opt/hostedtoolcache/CodeQL /usr/local/share/boost \
+                      "$AGENT_TOOLSDIRECTORY"
+          sudo docker image prune -af || true
+          df -h
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0  # needed for git describe
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y \
+            build-essential gcc g++ make git wget unzip \
+            bc cpio rsync python3 file libncurses-dev \
+            libssl-dev dos2unix
+
+      - name: Fix line endings
+        run: find build_scripts -name "*.sh" -exec dos2unix {} +
+
+      - name: Cache buildroot downloads
+        uses: actions/cache@v4
+        with:
+          path: submodules/buildroot/dl
+          key: br-dl-${{ hashFiles('build_scripts/buildroot/configs/**') }}
+          restore-keys: |
+            br-dl-${{ hashFiles('build_scripts/buildroot/configs/**') }}-
+            br-dl-
+
+      - name: Cache buildroot SDK
+        uses: actions/cache@v4
+        with:
+          path: build_output/buildroot/sdk
+          key: br-sdk-${{ hashFiles('build_scripts/buildroot/configs/sdk') }}-${{ hashFiles('.git/modules/submodules/buildroot/HEAD') }}
+          restore-keys: |
+            br-sdk-${{ hashFiles('build_scripts/buildroot/configs/sdk') }}-
+            br-sdk-
+
+      - name: Cache buildroot host tools
+        uses: actions/cache@v4
+        with:
+          path: build_output/buildroot/variant-${{ matrix.variant }}/host
+          key: br-host-${{ matrix.variant }}-${{ hashFiles('build_scripts/buildroot/configs/**') }}-${{ hashFiles('.git/modules/submodules/buildroot/HEAD') }}
+          restore-keys: |
+            br-host-${{ matrix.variant }}-${{ hashFiles('build_scripts/buildroot/configs/**') }}-
+            br-host-${{ matrix.variant }}-
+
+      - name: Pre-download large toolchain sources
+        run: |
+          # buildroot's mirrors (ftpmirror.gnu.org) are unreliable for GCC.
+          # Pre-download to the buildroot DL cache so the build never fetches live.
+          GCC_VER="14.2.0"
+          GCC_FILE="gcc-${GCC_VER}.tar.xz"
+          GCC_DIR="submodules/buildroot/dl/gcc"
+          mkdir -p "${GCC_DIR}"
+          if [ -f "${GCC_DIR}/${GCC_FILE}" ]; then
+            echo "GCC already in download cache, skipping"
+          else
+            echo "Downloading ${GCC_FILE}..."
+            DOWNLOADED=false
+            for URL in \
+              "https://ftp.gnu.org/gnu/gcc/gcc-${GCC_VER}/${GCC_FILE}" \
+              "https://mirrors.kernel.org/gnu/gcc/gcc-${GCC_VER}/${GCC_FILE}" \
+              "https://gcc.gnu.org/pub/gcc/releases/gcc-${GCC_VER}/${GCC_FILE}"; do
+              echo "  Trying ${URL}"
+              if wget -q -t 3 --connect-timeout=30 \
+                   -O "${GCC_DIR}/${GCC_FILE}.tmp" "${URL}" && \
+                 [ -s "${GCC_DIR}/${GCC_FILE}.tmp" ]; then
+                mv "${GCC_DIR}/${GCC_FILE}.tmp" "${GCC_DIR}/${GCC_FILE}"
+                echo "  OK, downloaded from ${URL}"
+                DOWNLOADED=true
+                break
+              fi
+              rm -f "${GCC_DIR}/${GCC_FILE}.tmp"
+              echo "  FAILED, trying next mirror"
+            done
+            if [ "${DOWNLOADED}" = false ]; then
+              echo "WARNING: could not pre-download GCC; buildroot will attempt its own download"
+            fi
+          fi
+
+      - name: Prepare SDK
+        run: ./build_scripts/build.sh prepare_sdk
+
+      - name: Build SDK
+        run: ./build_scripts/build.sh build_sdk
+
+      - name: Prepare variant
+        run: ./build_scripts/build.sh prepare_variant ${{ matrix.variant }}
+
+      - name: Build variant
+        run: ./build_scripts/build.sh build_variant ${{ matrix.variant }}
+
+      - name: Package variant
+        run: ./build_scripts/build.sh package_variant ${{ matrix.variant }}
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-${{ matrix.variant }}
+          path: build_output/packages/*.tgz
+          retention-days: 7
+
+  build-uninstall:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # needed for git describe
+
+      - name: Install dos2unix
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y dos2unix
+
+      - name: Fix line endings
+        run: find build_scripts -name "*.sh" -exec dos2unix {} +
+
+      - name: Package uninstaller
+        run: ./build_scripts/build.sh package_uninstall
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-uninstall
+          path: build_output/packages/*.tgz
+          retention-days: 7
+
+  rehearsal:
+    if: github.event_name == 'workflow_dispatch'
+    needs: [build-variant, build-uninstall]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # needed for git describe
+
+      - name: Download packages
+        uses: actions/download-artifact@v4
+        with:
+          pattern: package-*
+          path: build_output/packages
+          merge-multiple: true
+
+      - name: Generate checksums
+        run: ./build_scripts/build.sh checksums
+
+      - name: Rehearsal summary
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          {
+            echo "### Release rehearsal for \`$RELEASE_TAG\`"
+            echo
+            echo "This was a manual dispatch run. No tag was pushed and no GitHub Release was created."
+            echo "Package filenames are versioned from the most recent real tag (via \`git describe\`), not from the rehearsal input above."
+            echo
+            echo "**Packages that would be published:**"
+            echo '```'
+            ls -la build_output/packages
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload rehearsal bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-rehearsal-${{ inputs.tag }}
+          path: build_output/packages/*
+          retention-days: 7
+
+  release:
+    if: github.event_name == 'push'
+    needs: [build-variant, build-uninstall]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: release
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # needed for git describe
+
+      - name: Download packages
+        uses: actions/download-artifact@v4
+        with:
+          pattern: package-*
+          path: build_output/packages
+          merge-multiple: true
+
+      - name: Generate checksums
+        run: ./build_scripts/build.sh checksums
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$RELEASE_TAG" build_output/packages/* \
+            --title "$RELEASE_TAG" \
+            --generate-notes

@@ -100,6 +100,8 @@ This note was created based on issues encountered with PyInstaller executables r
 
 **Verify background daemons actually started.** After launching a service in the background (e.g. `iwd &`), capture `$!` and check with `kill -0 $PID` rather than assuming success and waiting out a fixed timeout.
 
+**`mkdir -p` the output dir in every function that writes to it, don't rely on call order.** `package_uninstall()` wrote into `$BUILD_PACKAGE` without creating it, and only worked because `make packages` always ran `package_variant` (which does `mkdir -p`) first. A standalone CI job calling it after a fresh checkout failed every time.
+
 ## CI/CD Workflows
 
 **Apply the same path filters to `push` and `pull_request` triggers.** Missing filters on one trigger causes expensive builds (e.g. multi-hour buildroot builds) to run on every PR regardless of changed files.
@@ -112,8 +114,16 @@ This note was created based on issues encountered with PyInstaller executables r
 
 **Actions pinned by version tag, not SHA — intentional for this OSS project.** The maintenance overhead of SHA-pinning was judged not worth the marginal supply-chain benefit here; don't re-flag this as a finding.
 
+**Pass dynamic values (tag names, ref names) into `run:` steps via `env:`, not inline `${{ }}` interpolation.** Interpolating directly into shell source is injectable if the value is ever attacker-influenced; cheap to harden even when current exploitability is low.
+
+**Scope elevated permissions (e.g. `contents: write`) to the job/trigger that actually needs them.** Don't let a rehearsal path (`workflow_dispatch`) share a job with the real publish path (`push` a tag) just to save a few duplicated steps — split into separate jobs so the dry run never carries write credentials.
+
+**A lightweight CI job still needs its own `apt-get install` for any tool its steps call.** Copying a step like `dos2unix` into a trimmed-down job (one that skips the full "Install build dependencies" list from the heavier job) silently drops the package that step depends on — `ubuntu-latest` doesn't ship `dos2unix` by default.
+
 ## Documentation Hygiene
 
 **Tag code fences with a language.** A fenced code block without a language identifier (plain ``` instead of ```text) triggers markdownlint warnings.
 
 **Keep CLAUDE.md's CI/process claims in sync with reality.** Statements like "no automated CI pipeline" go stale the moment CI is added — update process docs in the same PR that changes the process.
+
+**Don't repoint user-facing links at infrastructure that doesn't exist yet.** Updating download links to this fork's Releases page before any release has been published sends users to an empty page. Flip the link in the same change that ships the first real release, not ahead of it.

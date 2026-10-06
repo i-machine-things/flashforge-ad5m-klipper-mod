@@ -114,6 +114,10 @@ This note was created based on issues encountered with PyInstaller executables r
 
 **Actions pinned by version tag, not SHA — intentional for this OSS project.** The maintenance overhead of SHA-pinning was judged not worth the marginal supply-chain benefit here; don't re-flag this as a finding.
 
+**Pass dynamic values (tag names, ref names) into `run:` steps via `env:`, not inline `${{ }}` interpolation.** Interpolating directly into shell source is injectable if the value is ever attacker-influenced; cheap to harden even when current exploitability is low.
+
+**Scope elevated permissions (e.g. `contents: write`) to the job/trigger that actually needs them.** Don't let a rehearsal path (`workflow_dispatch`) share a job with the real publish path (`push` a tag) just to save a few duplicated steps — split into separate jobs so the dry run never carries write credentials.
+
 ## Documentation Hygiene
 
 **Tag code fences with a language.** A fenced code block without a language identifier (plain ``` instead of ```text) triggers markdownlint warnings.

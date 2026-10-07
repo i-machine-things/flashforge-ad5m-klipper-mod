@@ -114,7 +114,7 @@ This note was created based on issues encountered with PyInstaller executables r
 
 **Actions pinned by version tag, not SHA — intentional for this OSS project.** The maintenance overhead of SHA-pinning was judged not worth the marginal supply-chain benefit here; don't re-flag this as a finding.
 
-**`build-lite.yml` only ever builds the `lite` variant, so its dependency list doesn't prove the others build.** The `klipperscreen` variant's buildroot package runs `svg2png.sh` at build time, needing `rsvg-convert` (`librsvg2-bin`) - missing from the apt list because no CI job had ever built that variant until the release.yml rehearsal caught it. Don't assume a dependency list validated by one variant covers the rest.
+**A dependency list proven by one CI variant doesn't cover the others.** `klipperscreen`'s buildroot package runs `svg2png.sh`, needing `rsvg-convert` (`librsvg2-bin`) - missing because `build-lite.yml` only ever builds `lite`.
 
 **Pass dynamic values (tag names, ref names) into `run:` steps via `env:`, not inline `${{ }}` interpolation.** Interpolating directly into shell source is injectable if the value is ever attacker-influenced; cheap to harden even when current exploitability is low.
 

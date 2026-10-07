@@ -44,7 +44,7 @@ jobs:
           sudo apt-get install -y \
             build-essential gcc g++ make git wget unzip \
             bc cpio rsync python3 file libncurses-dev \
-            libssl-dev dos2unix
+            libssl-dev dos2unix librsvg2-bin
 
       - name: Fix line endings
         run: find build_scripts -name "*.sh" -exec dos2unix {} +

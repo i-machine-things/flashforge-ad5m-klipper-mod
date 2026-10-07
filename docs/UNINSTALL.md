@@ -11,7 +11,7 @@ During uninstall of Klipper Mod the MCU firmware version also downgraded to the 
 
 ### Uninstall via USB
 
-Download the `Adventurer5M-KlipperMod-uninstall.tgz` file from the [Release](https://github.com/xblax/flashforge_ad5m_klipper_mod/releases) page onto a USB flash drive, similar to the [Install](INSTALL.md) procedure.
+Download the `Adventurer5M-KlipperMod-uninstall.tgz` file from the [Release](https://github.com/i-machine-things/flashforge-ad5m-klipper-mod/releases) page onto a USB flash drive, similar to the [Install](INSTALL.md) procedure.
 
 Alternatively a marker file `klipper_mod_remove` will also trigger automatic uninstall during printer start-up.
 
